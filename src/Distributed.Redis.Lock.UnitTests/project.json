@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0-*",
+  "testRunner": "xunit",
+  "dependencies": {
+    "dotnet-test-xunit": "2.2.0-preview2-build1029",
+    "Distributed.Redis.Lock": "1.0.0-alpha01",
+    "NETStandard.Library": "1.6.0",
+    "StackExchange.Redis.StrongName": "1.1.608",
+    "xunit": "2.2.0-beta4-build3444"
+  },
+
+  "frameworks": {
+    "net452": {
+      "dependencies": {
+        "Microsoft.NETCore.Platforms": "1.0.1"
+      }
+    }
+  }
+}

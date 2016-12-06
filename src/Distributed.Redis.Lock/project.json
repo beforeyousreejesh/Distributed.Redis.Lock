@@ -1,0 +1,23 @@
+{
+  "name": "Distributed.Redis.Lock",
+  "version": "1.0.0-alpha01",
+  "description": "Distributed lock using redis",
+  "authors": [ "Sreejesh" ],
+  "packOptions": {
+    "files": {
+      "includeFiles": "readme.txt"
+    }
+  },
+  "dependencies": {
+    "NETStandard.Library": "1.6.0",
+    "StackExchange.Redis.StrongName": "1.1.608",
+    "System.Threading.Tasks.Parallel": "4.0.0"
+  },
+
+  "frameworks": {
+    "net452": {},
+    "netstandard1.6": {
+      "imports": "dnxcore50"
+    }
+  }
+}
