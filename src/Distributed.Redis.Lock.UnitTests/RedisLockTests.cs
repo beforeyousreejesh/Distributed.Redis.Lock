@@ -1,5 +1,6 @@
 ﻿using Distributed.Redis.Lock.Factory;
 using Distributed.Redis.Lock.Factory.Contract;
+using Moq;
 using StackExchange.Redis;
 
 namespace Frontiers.Journal.Redis.Lock.UnitTests
@@ -8,13 +9,25 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
     {
         protected internal IRedisLockFactory _redisLockfactory;
 
-        protected internal string ConnectionString = "192.168.0.56:6379,defaultDatabase=0,abortConnect=false";
+        protected internal Mock<IConnectionMultiplexer> _connectionMultiplexer;
+
+        protected internal Mock<IDatabase> _mockDatabase;
 
         protected internal int Db = 0;
 
         public RedisLockTests()
         {
-            _redisLockfactory = new RedisLockFactory(ConnectionMultiplexer.Connect(ConnectionString), Db);
+            _mockDatabase = new Mock<IDatabase>();
+
+
+            _connectionMultiplexer = new Mock<IConnectionMultiplexer>();
+
+            _redisLockfactory = new RedisLockFactory(_connectionMultiplexer.Object, Db);
+
+            _connectionMultiplexer.Setup(x =>
+                        x.GetDatabase(
+                            It.IsAny<int>(),
+                            It.IsAny<object>())).Returns(_mockDatabase.Object);
         }
     }
 }

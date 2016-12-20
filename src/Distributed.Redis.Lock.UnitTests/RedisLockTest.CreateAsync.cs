@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Distributed.Redis.Lock.Core;
+using Moq;
+using StackExchange.Redis;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -10,6 +13,20 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
     public class CreateAsync : RedisLockTests
     {
         private string _resourceName = "test:UniTest";
+
+        public CreateAsync()
+        {
+            _mockDatabase.Setup(x => x.KeyExpire(
+                                        It.IsAny<string>(),
+                                        It.IsAny<TimeSpan>(),
+                                        It.IsAny<CommandFlags>()))
+                                     .Returns(true);
+
+            _mockDatabase.Setup(x=>x.KeyDeleteAsync(
+                                        It.IsAny<string>(),
+                                        It.IsAny<CommandFlags>()))
+                                    .Returns(Task.FromResult(true));
+        }
 
         [Theory]
         [InlineData(3, 3, 3, 1)]
@@ -23,6 +40,14 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
             var expiryTime = TimeSpan.FromSeconds(expiryTimeSeconds);
             var waitingTime = TimeSpan.FromSeconds(waitingTimeSeconds);
             var retryTime = TimeSpan.FromSeconds(retryTimeSeconds);
+
+            _mockDatabase.Setup(x => x.StringSetAsync(
+                            "distributed-redislock:" + _resourceName,
+                            1,
+                            expiryTime,
+                            When.NotExists,
+                            CommandFlags.DemandMaster))
+                      .Returns(Task.FromResult(true));
 
             // Act
             using (var redisLock = await _redisLockfactory.CreateAsync(_resourceName, expiryTime, waitingTime, renewCount, retryTime, CancellationToken.None))
@@ -45,6 +70,14 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
             var waitingTime = TimeSpan.FromSeconds(waitingTimeSeconds);
             var retryTime = TimeSpan.FromSeconds(retryTimeSeconds);
 
+            _mockDatabase.Setup(x => x.StringSetAsync(
+                            "distributed-redislock:" + resourceName,
+                            1,
+                            expiryTime,
+                            When.NotExists,
+                            CommandFlags.DemandMaster))
+                      .Returns(Task.FromResult(true));
+
             // Act
             using (var redisLock = await _redisLockfactory.CreateAsync(resourceName, expiryTime, waitingTime, renewCount, retryTime, CancellationToken.None))
             {
@@ -63,9 +96,25 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
             var retryTime = TimeSpan.FromSeconds(5);
             string resourceName = "test:UniTest:1";
 
+            _mockDatabase.Setup(x => x.StringSetAsync(
+                            "distributed-redislock:" + resourceName,
+                            1,
+                            expiryTime,
+                            When.NotExists,
+                            CommandFlags.DemandMaster))
+                      .Returns(Task.FromResult(true));
+
             // Act
             using (var redisLock = await _redisLockfactory.CreateAsync(resourceName, expiryTime, waitingTime, 0, retryTime, CancellationToken.None))
             {
+                _mockDatabase.Setup(x => x.StringSetAsync(
+                                "distributed-redislock:" + resourceName,
+                                1,
+                                expiryTime,
+                                When.NotExists,
+                                CommandFlags.DemandMaster))
+                          .Returns(Task.FromResult(false));
+
                 var redisLockAgain = await _redisLockfactory.CreateAsync(resourceName, expiryTime, waitingTime, 0, retryTime, CancellationToken.None);
 
                 // Assert
@@ -83,6 +132,13 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
             var retryTime = TimeSpan.FromSeconds(5);
             string resourceName = "test:UniTest:1";
 
+            _mockDatabase.Setup(x => x.StringSetAsync(
+                            "distributed-redislock:" + resourceName,
+                            1,
+                            expiryTime,
+                            When.NotExists,
+                            CommandFlags.DemandMaster))
+                      .Returns(Task.FromResult(true));
             // Act
             using (var redisLock = await _redisLockfactory.CreateAsync(resourceName, expiryTime, waitingTime, 5, retryTime, CancellationToken.None))
             {
@@ -102,6 +158,25 @@ namespace Frontiers.Journal.Redis.Lock.UnitTests
             var waitingTime = TimeSpan.FromSeconds(3);
             var retryTime = TimeSpan.FromSeconds(5);
             string resourceName = "test:UniTest:1";
+
+            _mockDatabase.Setup(x => x.StringSetAsync(
+                            "distributed-redislock:" + resourceName,
+                            1,
+                            expiryTime,
+                            When.NotExists,
+                            CommandFlags.DemandMaster))
+                      .Returns(Task.FromResult(true));
+
+            _mockDatabase.Setup(x => x.KeyExpire(
+                            "distributed-redislock:" + resourceName,
+                            expiryTime,
+                            CommandFlags.DemandMaster))
+                         .Returns(true);
+
+            _mockDatabase.Setup(x => x.KeyDeleteAsync(
+                                        "distributed-redislock:" + resourceName,
+                                        CommandFlags.DemandMaster))
+                                    .Returns(Task.FromResult(true));
 
             // Act
             using (var redisLock = await _redisLockfactory.CreateAsync(resourceName, expiryTime, waitingTime, 5, retryTime, CancellationToken.None))

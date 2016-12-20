@@ -9,7 +9,9 @@ namespace Distributed.Redis.Lock.Factory
 {
     public class RedisLockFactory : IRedisLockFactory
     {
-        private readonly RedisConnection redisConnection;
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
+
+        private int _database;
 
         private string RedisLockKey = "distributed-redislock:{0}";
 
@@ -20,7 +22,8 @@ namespace Distributed.Redis.Lock.Factory
                 throw new ArgumentNullException(nameof(connectionMultiplexer));
             }
 
-            redisConnection = new RedisConnection { connectionMultiplexer = connectionMultiplexer, DataBase = database ?? 0 };
+            _connectionMultiplexer = connectionMultiplexer;
+            _database = database ?? 0;
         }
 
         /// <summary>
@@ -35,7 +38,7 @@ namespace Distributed.Redis.Lock.Factory
         /// <returns></returns>
         public async Task<RedisLock> CreateAsync(string resource, TimeSpan expiryTime, TimeSpan waitingTime, int renewCount, TimeSpan retryTime, CancellationToken cancellationToken)
         {
-            var redisLock = new RedisLock(string.Format(RedisLockKey, resource), expiryTime, redisConnection, waitingTime, renewCount, retryTime);
+            var redisLock = new RedisLock(string.Format(RedisLockKey, resource), expiryTime, _connectionMultiplexer, waitingTime, renewCount, retryTime, _database);
 
             return await RedisLock.CreateAsync(redisLock, cancellationToken).ConfigureAwait(false);
         }

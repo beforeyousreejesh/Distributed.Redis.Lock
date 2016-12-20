@@ -22,7 +22,7 @@ namespace Distributed.Redis.Lock.Core
 
         public int TotalReNewCount;
 
-        private RedisConnection _redisConnection;
+        private IConnectionMultiplexer _connectionMultiplexer;
 
         private Timer keepLockBeforeDispose;
 
@@ -30,7 +30,9 @@ namespace Distributed.Redis.Lock.Core
 
         private int ReNewCount;
 
-        public RedisLock(string redisLockKey, TimeSpan expiryTime, RedisConnection redisConnection, TimeSpan waitingTime, int renewCount, TimeSpan retryTime)
+        private int _database;
+
+        public RedisLock(string redisLockKey, TimeSpan expiryTime, IConnectionMultiplexer connectionMultiplexer, TimeSpan waitingTime, int renewCount, TimeSpan retryTime,int database)
         {
             if (redisLockKey == null)
             {
@@ -42,9 +44,9 @@ namespace Distributed.Redis.Lock.Core
                 throw new ArgumentNullException(nameof(expiryTime));
             }
 
-            if (redisConnection == null)
+            if (connectionMultiplexer == null)
             {
-                throw new ArgumentNullException(nameof(redisConnection));
+                throw new ArgumentNullException(nameof(connectionMultiplexer));
             }
 
             if (waitingTime == null)
@@ -59,10 +61,11 @@ namespace Distributed.Redis.Lock.Core
 
             RedisLockKey = redisLockKey;
             ExpiryTime = expiryTime;
-            _redisConnection = redisConnection;
+            _connectionMultiplexer = connectionMultiplexer;
             WaitingTime = waitingTime;
             RetryTime = retryTime;
             TotalReNewCount = renewCount;
+            _database = database;
             IsAcquired = false;
         }
 
@@ -118,26 +121,23 @@ namespace Distributed.Redis.Lock.Core
 
         private async Task UnLockAsync()
         {
-            await _redisConnection
-                    .connectionMultiplexer
-                    .GetDatabase(_redisConnection.DataBase)
+            await _connectionMultiplexer
+                    .GetDatabase(_database)
                     .KeyDeleteAsync(RedisLockKey, CommandFlags.FireAndForget).ConfigureAwait(false);
         }
 
         private void UnLock()
         {
-            _redisConnection
-                   .connectionMultiplexer
-                   .GetDatabase(_redisConnection.DataBase)
-                   .KeyDeleteAsync(RedisLockKey, CommandFlags.FireAndForget);
+            _connectionMultiplexer
+                .GetDatabase(_database)
+                .KeyDeleteAsync(RedisLockKey, CommandFlags.FireAndForget);
         }
 
         private async Task<bool> LockAsync()
         {
-            return await _redisConnection
-                 .connectionMultiplexer
-                 .GetDatabase(_redisConnection.DataBase)
-                 .StringSetAsync(RedisLockKey, 1, ExpiryTime, When.NotExists, CommandFlags.DemandMaster).ConfigureAwait(false);
+            return await _connectionMultiplexer
+                    .GetDatabase(_database)
+                    .StringSetAsync(RedisLockKey, 1, ExpiryTime, When.NotExists, CommandFlags.DemandMaster).ConfigureAwait(false);
         }
 
         private void KeepLockAliveBeforeDispose()
@@ -150,7 +150,7 @@ namespace Distributed.Redis.Lock.Core
                     {
                         if (!_isDisposed && ReNewCount < TotalReNewCount)
                         {
-                            _redisConnection.connectionMultiplexer.GetDatabase(_redisConnection.DataBase).KeyExpire(RedisLockKey, ExpiryTime, CommandFlags.DemandMaster);
+                            _connectionMultiplexer.GetDatabase(_database).KeyExpire(RedisLockKey, ExpiryTime, CommandFlags.DemandMaster);
                             ReNewCount++;
                         }
                     }
